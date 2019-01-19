@@ -97,11 +97,9 @@ static ble_gap_adv_data_t m_adv_data =
 };
 
 
-static uint8_t m_beacon_info[4] = {
-    0xaa,
-    0xbb,
-    0xcc,
-    0xdd,
+static uint8_t data[2] = {
+    00,
+    00,
 };
 
 /**@brief Callback function for asserts in the SoftDevice.
@@ -135,8 +133,8 @@ static void advertising_init(void) {
     sd_ble_gap_device_name_set(&sec_mode, (const uint8_t *) DEVICE_NAME, strlen(DEVICE_NAME));
 
     manuf_specific_data.company_identifier = 0xffff;
-    manuf_specific_data.data.p_data = (uint8_t *) m_beacon_info;
-    manuf_specific_data.data.size   = 4;
+    manuf_specific_data.data.p_data = (uint8_t *) data;
+    manuf_specific_data.data.size   = 2;
 
     // Build and set advertising data.
     memset(&advdata, 0, sizeof(advdata));
@@ -160,7 +158,14 @@ static void advertising_init(void) {
     sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, m_adv_handle, 4);
 }
 
+void button_handler(uint8_t pin_no, uint8_t action) {
+    data[0] += 1;
+    data[1] = action;
 
+    advertising_init();
+}
+
+app_button_cfg_t button;
 
 int main(void)
 {
@@ -175,10 +180,20 @@ int main(void)
     nrf_sdh_ble_default_cfg_set(APP_BLE_CONN_CFG_TAG, &ram_start);
     nrf_sdh_ble_enable(&ram_start);
 
+    app_timer_init();
+
     advertising_init();
 
     // Advertising start.
     sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
+
+    button.pin_no = 20;
+    button.active_state = APP_BUTTON_ACTIVE_LOW;
+    button.pull_cfg = NRF_GPIO_PIN_PULLUP; // (NRF_GPIO_PIN_{PULLUP,PULLDOWN,NOPULL}
+    button.button_handler = button_handler;
+
+    app_button_init(&button, 1, 50);
+    app_button_enable();
 
     while (1) {
         nrf_pwr_mgmt_run();
