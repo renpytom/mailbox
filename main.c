@@ -57,6 +57,7 @@
 #include "ble_advdata.h"
 #include "app_timer.h"
 #include "nrf_pwr_mgmt.h"
+#include "nrf_drv_saadc.h"
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
@@ -65,16 +66,9 @@
 #define DEVICE_NAME "Mbx"
 
 #define APP_BLE_CONN_CFG_TAG            1                                  /**< A tag identifying the SoftDevice BLE configuration. */
-
 #define NON_CONNECTABLE_ADV_INTERVAL    MSEC_TO_UNITS(1500, UNIT_0_625_MS)  /**< The advertising interval for non-connectable advertisement (100 ms). This value can vary between 100ms to 10.24s). */
-
-
 #define DEAD_BEEF                       0xDEADBEEF                         /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
-#if defined(USE_UICR_FOR_MAJ_MIN_VALUES)
-#define MAJ_VAL_OFFSET_IN_BEACON_INFO   18                                 /**< Position of the MSB of the Major Value in m_beacon_info array. */
-#define UICR_ADDRESS                    0x10001080                         /**< Address of the UICR register used by this example. The major and minor versions to be encoded into the advertising data will be picked up from this location. */
-#endif
 
 static ble_gap_adv_params_t m_adv_params;                                  /**< Parameters to be passed to the stack when starting advertising. */
 static uint8_t              m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET; /**< Advertising handle used to identify an advertising set. */
@@ -96,11 +90,8 @@ static ble_gap_adv_data_t m_adv_data =
     }
 };
 
-
-static uint8_t data[2] = {
-    00,
-    00,
-};
+#define DATA_LEN 4
+static uint8_t data[DATA_LEN] = { 0, 0, 0, 0 };
 
 /**@brief Callback function for asserts in the SoftDevice.
  *
@@ -118,11 +109,35 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
 
-/**@brief Function for initializing the Advertising functionality.
- *
- * @details Encodes the required advertising data and passes it to the stack.
- *          Also builds a structure to be passed to the stack when starting advertising.
- */
+
+
+void adc_callback (nrf_drv_saadc_evt_t const *p_event) {
+}
+
+void adc_read() {
+    nrf_drv_saadc_config_t conf = NRF_DRV_SAADC_DEFAULT_CONFIG;
+    nrf_saadc_channel_config_t ch0 = NRF_DRV_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_VDD);
+
+    unsigned int sum = 0;
+
+    nrfx_saadc_init(&conf, adc_callback);
+    nrfx_saadc_channel_init(0, &ch0);
+
+#define samples 16
+
+    for (int i = 0; i < samples; i++) {
+        uint16_t sample;
+        nrfx_saadc_sample_convert(0, (nrf_saadc_value_t *) &sample);
+        sum += sample;
+    }
+
+
+    *((unsigned short *) data) = sum / samples;
+
+    nrfx_saadc_uninit();
+}
+
+
 static void advertising_init(void) {
     ble_gap_conn_sec_mode_t sec_mode;
     ble_advdata_t advdata;
@@ -132,9 +147,11 @@ static void advertising_init(void) {
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
     sd_ble_gap_device_name_set(&sec_mode, (const uint8_t *) DEVICE_NAME, strlen(DEVICE_NAME));
 
+    adc_read();
+
     manuf_specific_data.company_identifier = 0xffff;
     manuf_specific_data.data.p_data = (uint8_t *) data;
-    manuf_specific_data.data.size   = 2;
+    manuf_specific_data.data.size   = DATA_LEN;
 
     // Build and set advertising data.
     memset(&advdata, 0, sizeof(advdata));
@@ -158,9 +175,11 @@ static void advertising_init(void) {
     sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, m_adv_handle, 4);
 }
 
+
+
 void button_handler(uint8_t pin_no, uint8_t action) {
-    data[0] += 1;
-    data[1] = action;
+    data[2] += 1;
+    data[3] = action;
 
     advertising_init();
 }
