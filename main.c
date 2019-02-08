@@ -82,8 +82,8 @@ static ble_gap_adv_data_t m_adv_data =
     }
 };
 
-#define DATA_LEN 4
-static uint8_t data[DATA_LEN] = { 0, 0, 0, 0 };
+#define DATA_LEN 6
+static uint8_t data[DATA_LEN] = { 0, 0, 0, 0, 0, 0 };
 
 /**@brief Callback function for asserts in the SoftDevice.
  *
@@ -131,10 +131,14 @@ void adc_read() {
 
 
 static void advertising_init(void) {
+    int32_t temperature;
+
     ble_gap_conn_sec_mode_t sec_mode;
     ble_advdata_t advdata;
     ble_advdata_manuf_data_t manuf_specific_data;
 
+    sd_temp_get(&temperature);
+    * (int16_t *) &data[4] = temperature;
 
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
     sd_ble_gap_device_name_set(&sec_mode, (const uint8_t *) DEVICE_NAME, strlen(DEVICE_NAME));
