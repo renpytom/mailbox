@@ -38,15 +38,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-/** @file
- *
- * @defgroup ble_sdk_app_beacon_main main.c
- * @{
- * @ingroup ble_sdk_app_beacon
- * @brief Beacon Transmitter Sample Application main file.
- *
- * This file contains the source code for an Beacon transmitter sample application.
- */
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -207,9 +198,9 @@ int main(void)
     // Advertising start.
     sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
 
-    button.pin_no = 20;
-    button.active_state = APP_BUTTON_ACTIVE_LOW;
-    button.pull_cfg = NRF_GPIO_PIN_PULLUP; // (NRF_GPIO_PIN_{PULLUP,PULLDOWN,NOPULL}
+    button.pin_no = 25;
+    button.active_state = APP_BUTTON_ACTIVE_HIGH;
+    button.pull_cfg = NRF_GPIO_PIN_NOPULL; // (NRF_GPIO_PIN_{PULLUP,PULLDOWN,NOPULL}
     button.button_handler = button_handler;
 
     app_button_init(&button, 1, 50);
