@@ -82,8 +82,8 @@ static ble_gap_adv_data_t m_adv_data =
     }
 };
 
-#define DATA_LEN 7
-static uint8_t data[DATA_LEN] = { 0, 0, 0, 0, 0, 0, 0 };
+#define DATA_LEN 6
+static uint8_t data[DATA_LEN] = { 0, 0, 0, 0, 0, 0 };
 
 /**@brief Callback function for asserts in the SoftDevice.
  *
@@ -138,12 +138,12 @@ static void advertising_init(void) {
     ble_advdata_manuf_data_t manuf_specific_data;
 
     sd_temp_get(&temperature);
-    * (int16_t *) &data[4] = temperature;
+    * (int8_t *) &data[4] = temperature / 2;
 
     adc_read();
 
     // Increase the serial number.
-    data[6] += 1;
+    data[5] += 1;
 
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
     sd_ble_gap_device_name_set(&sec_mode, (const uint8_t *) DEVICE_NAME, strlen(DEVICE_NAME));
@@ -221,7 +221,7 @@ int main(void)
     button.pull_cfg = NRF_GPIO_PIN_NOPULL; // (NRF_GPIO_PIN_{PULLUP,PULLDOWN,NOPULL}
     button.button_handler = button_handler;
 
-    app_button_init(&button, 1, 50);
+    app_button_init(&button, 1, APP_TIMER_TICKS(10));
     app_button_enable();
 
     while (1) {
