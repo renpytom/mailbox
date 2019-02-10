@@ -1,3 +1,15 @@
+# This is intended to run as root on a Raspberry Pi 3 using Raspian Jessie.
+# It monitors bluetooth packets from the given mac address, and when one comes
+# in.
+
+# Logs the current data to /run/user/0/blenow.txt
+# Logs historical data to /root/blelog.txt, if a changes has happened.
+# Notifies me via simplepush, if the switch has changed, and a notification
+# hasn't happened in the past minute.
+
+MAC = "de:f6:93:86:32:b1"
+PUSH = "HeS3cQ"
+
 # JCS 06/07/14
 # BLE iBeaconScanner based on https://github.com/adamf/BLE/blob/master/ble-scanner.py
 # https://github.com/pauloborges/bluez/blob/master/tools/hcitool.c for lescan
@@ -170,9 +182,20 @@ import requests
 import traceback
 
 
+last_notify_time = 0
+
+
 def notify(message):
+
+    global last_notify_time
+
+    if time.time() < last_notify_time + 60:
+        return
+
+    last_notify_time = time.time()
+
     try:
-        requests.post("https://api.simplepush.io/send", data={ "key" : "HeS3cQ", "title" : "Mbx", "msg": message })
+        requests.post("https://api.simplepush.io/send", data={ "key" : PUSH, "title" : "Mbx", "msg": message })
     except:
         traceback.print_exc()
 
@@ -190,7 +213,7 @@ def main():
     last_serial = -1
 
     for p in generate_le_scan():
-        if p.mac != "de:f6:93:86:32:b1":
+        if p.mac != MAC:
             continue
 
         data = p.attr[0xff]
@@ -216,7 +239,9 @@ def main():
         # print(list(data))
 
         message = f"{now} voltage={voltage:.3f} changes={changes} state={state} temp={temp_f:.1f} serial={serial}"
-        print(message, end='\r')
+
+        with open("/run/user/0/blenow.txt", "w") as f:
+            print(message, file=f)
 
         if changes != last_changes:
             if last_changes != -1:
@@ -224,11 +249,8 @@ def main():
             last_changes = changes
 
         if serial != last_serial:
-            with open("blelog.txt", "a") as f:
-                print(f'{now}\t{changes}\t{voltage:.3f}\t{temp_f:.1f}\t{serial}\t{p.rssi}', file=f)
-
-            if last_serial != -1:
-                print()
+            with open("/root/blelog.txt", "a") as f:
+                print(f'{now}\t{changes}\t{state}\t{voltage:.3f}\t{temp_f:.1f}\t{serial}\t{p.rssi}', file=f)
 
             last_serial = serial
 
